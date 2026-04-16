@@ -65,7 +65,7 @@ export default function RegistroBuscador() {
     if (error) {
       setError(error.message === "User already registered"
         ? "Ya existe una cuenta con ese email."
-        : "Error al crear la cuenta. Intentá de nuevo.");
+        : `Error: ${error.message}`);
       setLoading(false);
       return;
     }
@@ -83,28 +83,25 @@ export default function RegistroBuscador() {
     const uid = userId;
     if (!uid) { setError("Error al recuperar la sesión. Intentá de nuevo."); setLoading(false); return; }
 
-    // Guardar perfil
-    const { error: profileError } = await supabase.from("profiles").upsert({
-      id: uid,
-      role: "buscador",
-      nombre,
-      email,
+    const res = await fetch("/api/registro/perfil", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tipo: "buscador",
+        userId: uid,
+        nombre,
+        email,
+        rubro,
+        zonas,
+        superficie_min: superficieMin ? parseInt(superficieMin) : null,
+        superficie_max: superficieMax ? parseInt(superficieMax) : null,
+        precio_maximo: precioMaximo ? parseInt(precioMaximo) : null,
+        umbral_alerta: umbralAlerta,
+      }),
     });
 
-    if (profileError) { setError("Error al guardar el perfil."); setLoading(false); return; }
-
-    // Guardar preferencias
-    const { error: prefError } = await supabase.from("buscador_preferences").insert({
-      user_id: uid,
-      rubro,
-      zonas,
-      superficie_min: superficieMin ? parseInt(superficieMin) : null,
-      superficie_max: superficieMax ? parseInt(superficieMax) : null,
-      precio_maximo: precioMaximo ? parseInt(precioMaximo) : null,
-      umbral_alerta: umbralAlerta,
-    });
-
-    if (prefError) { setError("Error al guardar las preferencias."); setLoading(false); return; }
+    const result = await res.json();
+    if (!res.ok) { setError(`Error: ${result.error}`); setLoading(false); return; }
 
     setLoading(false);
     setStep(3);

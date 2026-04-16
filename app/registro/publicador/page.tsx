@@ -64,27 +64,26 @@ export default function RegistroPublicador() {
     const uid = userId;
     if (!uid) { setError("Error al recuperar la sesión. Intentá de nuevo."); setLoading(false); return; }
 
-    const { error: profileError } = await supabase.from("profiles").upsert({
-      id: uid,
-      role: "publicador",
-      nombre,
-      email,
+    const res = await fetch("/api/registro/perfil", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tipo: "publicador",
+        userId: uid,
+        nombre,
+        email,
+        empresa,
+        telefono,
+        cuit,
+        condicion_iva: condicionIva,
+        tipo_publicador: tipoPublicador,
+        matricula,
+        sitio_web: sitioWeb,
+      }),
     });
 
-    if (profileError) { setError("Error al guardar el perfil."); setLoading(false); return; }
-
-    const { error: pubError } = await supabase.from("publicador_profiles").insert({
-      user_id: uid,
-      empresa: empresa || null,
-      telefono,
-      cuit,
-      condicion_iva: condicionIva,
-      tipo_publicador: tipoPublicador,
-      matricula: matricula || null,
-      sitio_web: sitioWeb || null,
-    });
-
-    if (pubError) { setError("Error al guardar los datos."); setLoading(false); return; }
+    const result = await res.json();
+    if (!res.ok) { setError(`Error: ${result.error}`); setLoading(false); return; }
 
     setLoading(false);
     setStep(3);
