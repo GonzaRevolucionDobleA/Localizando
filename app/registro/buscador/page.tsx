@@ -30,6 +30,7 @@ export default function RegistroBuscador() {
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Step 1: cuenta
   const [nombre, setNombre] = useState("");
@@ -55,7 +56,7 @@ export default function RegistroBuscador() {
     setError("");
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { full_name: nombre } },
@@ -69,6 +70,7 @@ export default function RegistroBuscador() {
       return;
     }
 
+    if (data?.user) setUserId(data.user.id);
     setLoading(false);
     setStep(2);
   }
@@ -78,12 +80,12 @@ export default function RegistroBuscador() {
     setError("");
     setLoading(true);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setError("Sesión expirada. Volvé a registrarte."); setLoading(false); return; }
+    const uid = userId;
+    if (!uid) { setError("Error al recuperar la sesión. Intentá de nuevo."); setLoading(false); return; }
 
     // Guardar perfil
     const { error: profileError } = await supabase.from("profiles").upsert({
-      id: user.id,
+      id: uid,
       role: "buscador",
       nombre,
       email,
@@ -93,7 +95,7 @@ export default function RegistroBuscador() {
 
     // Guardar preferencias
     const { error: prefError } = await supabase.from("buscador_preferences").insert({
-      user_id: user.id,
+      user_id: uid,
       rubro,
       zonas,
       superficie_min: superficieMin ? parseInt(superficieMin) : null,

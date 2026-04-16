@@ -13,6 +13,7 @@ export default function RegistroPublicador() {
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Step 1: cuenta
   const [nombre, setNombre] = useState("");
@@ -36,7 +37,7 @@ export default function RegistroPublicador() {
     setError("");
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { full_name: nombre } },
@@ -50,6 +51,7 @@ export default function RegistroPublicador() {
       return;
     }
 
+    if (data?.user) setUserId(data.user.id);
     setLoading(false);
     setStep(2);
   }
@@ -59,11 +61,11 @@ export default function RegistroPublicador() {
     setError("");
     setLoading(true);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setError("Sesión expirada. Volvé a registrarte."); setLoading(false); return; }
+    const uid = userId;
+    if (!uid) { setError("Error al recuperar la sesión. Intentá de nuevo."); setLoading(false); return; }
 
     const { error: profileError } = await supabase.from("profiles").upsert({
-      id: user.id,
+      id: uid,
       role: "publicador",
       nombre,
       email,
@@ -72,7 +74,7 @@ export default function RegistroPublicador() {
     if (profileError) { setError("Error al guardar el perfil."); setLoading(false); return; }
 
     const { error: pubError } = await supabase.from("publicador_profiles").insert({
-      user_id: user.id,
+      user_id: uid,
       empresa: empresa || null,
       telefono,
       cuit,
@@ -92,11 +94,10 @@ export default function RegistroPublicador() {
     e.preventDefault();
     setLoading(true);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
+    if (userId) {
       await supabase.from("publicador_profiles")
         .update({ plan_actual: plan })
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
     }
 
     setLoading(false);
